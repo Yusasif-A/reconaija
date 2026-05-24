@@ -32,6 +32,11 @@ yelp_academic_dataset_*.json
 data/faiss_index/*.index
 data/faiss_index/*.pkl
 
+# Documentation/PDFs not needed
+*.pdf
+BCT_Hackathon_Build_Spec*.md
+ARCHITECTURE_IMPROVEMENTS.md
+
 # Large JSON datasets
 amazon_samples-1/*.json
 *.json
