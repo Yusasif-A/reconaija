@@ -13,7 +13,11 @@
       "PowerShell(New-Item -Path \"C:\\\\Users\\\\USER\\\\Documents\\\\dsc-hackathon\\\\backend\\\\database\\\\__init__.py\" -ItemType File -Force)",
       "PowerShell(New-Item -Path \"C:\\\\Users\\\\USER\\\\Documents\\\\dsc-hackathon\\\\backend\\\\embeddings\\\\__init__.py\" -ItemType File -Force)",
       "PowerShell(New-Item -Path \"C:\\\\Users\\\\USER\\\\Documents\\\\dsc-hackathon\\\\frontend\\\\src\" -ItemType Directory -Force)",
-      "PowerShell(New-Item -Path \"C:\\\\Users\\\\USER\\\\Documents\\\\dsc-hackathon\\\\frontend\\\\src\\\\components\" -ItemType Directory -Force)"
+      "PowerShell(New-Item -Path \"C:\\\\Users\\\\USER\\\\Documents\\\\dsc-hackathon\\\\frontend\\\\src\\\\components\" -ItemType Directory -Force)",
+      "Bash(mkdir -p \"c:/Users/USER/Documents/dsc-hackathon/docs\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\USER\\Documents\\dsc-hackathon\\docs"
     ]
   }
 }
