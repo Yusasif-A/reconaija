@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(python dataset.py)",
+      "Bash(conda run *)",
+      "PowerShell(& \"C:\\\\ProgramData\\\\miniconda3\\\\condabin\\\\conda.bat\" run -n publica python dataset.py)",
+      "PowerShell(Get-ChildItem -Path \"amazon_samples\" -File | Select-Object Name, @{Name=\"Size\\(MB\\)\";Expression={[math]::Round\\($_.Length/1MB,2\\)}}, LastWriteTime | Format-Table -AutoSize)",
+      "PowerShell(& \"C:\\\\ProgramData\\\\miniconda3\\\\condabin\\\\conda.bat\" run -n publica python dataset_streaming.py)",
+      "PowerShell(New-Item -Path \"C:\\\\Users\\\\USER\\\\Documents\\\\dsc-hackathon\\\\backend\\\\__init__.py\" -ItemType File -Force)",
+      "PowerShell(New-Item -Path \"C:\\\\Users\\\\USER\\\\Documents\\\\dsc-hackathon\\\\backend\\\\agents\\\\__init__.py\" -ItemType File -Force)",
+      "PowerShell(New-Item -Path \"C:\\\\Users\\\\USER\\\\Documents\\\\dsc-hackathon\\\\backend\\\\tools\\\\__init__.py\" -ItemType File -Force)",
+      "PowerShell(New-Item -Path \"C:\\\\Users\\\\USER\\\\Documents\\\\dsc-hackathon\\\\backend\\\\middleware\\\\__init__.py\" -ItemType File -Force)",
+      "PowerShell(New-Item -Path \"C:\\\\Users\\\\USER\\\\Documents\\\\dsc-hackathon\\\\backend\\\\database\\\\__init__.py\" -ItemType File -Force)",
+      "PowerShell(New-Item -Path \"C:\\\\Users\\\\USER\\\\Documents\\\\dsc-hackathon\\\\backend\\\\embeddings\\\\__init__.py\" -ItemType File -Force)",
+      "PowerShell(New-Item -Path \"C:\\\\Users\\\\USER\\\\Documents\\\\dsc-hackathon\\\\frontend\\\\src\" -ItemType Directory -Force)",
+      "PowerShell(New-Item -Path \"C:\\\\Users\\\\USER\\\\Documents\\\\dsc-hackathon\\\\frontend\\\\src\\\\components\" -ItemType Directory -Force)"
+    ]
+  }
+}
