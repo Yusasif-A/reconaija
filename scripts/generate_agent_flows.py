@@ -6,11 +6,15 @@ Creates visual representations of Task A and Task B agent graphs
 import sys
 import os
 
-# Add parent directory to path
+# Add parent directory and backend to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backend'))
 
-from backend.agents.task_a_agent import task_a_graph
-from backend.agents.task_b_agent import task_b_graph
+# Change to backend directory for imports to work
+os.chdir(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backend'))
+
+from agents.task_a_agent import task_a_graph
+from agents.task_b_agent import task_b_graph
 
 def generate_flows():
     """Generate and save agent flow diagrams"""

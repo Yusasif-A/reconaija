@@ -99,7 +99,37 @@ dsc-hackathon/
 └── .env
 ```
 
-## 🚀 Setup Instructions
+## 🚀 Quick Start with Docker
+
+### Running with Docker (Recommended)
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Yusasif-A/reconaija.git
+   cd reconaija
+   ```
+
+2. **Configure environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+3. **Run with Docker Compose**
+   ```bash
+   docker-compose up --build
+   ```
+
+4. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - API Docs: http://localhost:8000/docs
+
+That's it! Docker will handle all dependencies, database setup, and service orchestration.
+
+---
+
+## 🛠️ Manual Setup (Alternative)
 
 ### Prerequisites
 - Python 3.11+

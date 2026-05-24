@@ -1,33 +1,55 @@
-version: "3.9"
+version: '3.8'
 
 services:
-  backend:
-    build: ./backend
+  reconaija-backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: reconaija-backend
-    ports:
-      - "8000:8000"
-    environment:
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_USERNAME=${DB_USERNAME}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-    volumes:
-      - ./backend:/app
-      - ./data:/app/data
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    env_file:
+      - .env
+    environment:
+      - PORT=${PORT:-8000}
+    depends_on:
+      - mysql
+    networks:
+      - reconaija-network
 
-  frontend:
-    build: ./frontend
+  reconaija-frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
     container_name: reconaija-frontend
+    restart: unless-stopped
     ports:
       - "3000:80"
     depends_on:
-      - backend
-    environment:
-      - VITE_API_URL=http://localhost:8000
+      - reconaija-backend
+    networks:
+      - reconaija-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: reconaija-mysql
     restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT:-3307}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - reconaija-network
+
+networks:
+  reconaija-network:
+    driver: bridge
 
 volumes:
-  data:
+  mysql-data:

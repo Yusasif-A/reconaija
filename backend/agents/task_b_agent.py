@@ -93,10 +93,16 @@ def node_expand_domain(state: TaskBState) -> dict:
 def node_cold_start_search(state: TaskBState) -> dict:
     """Search businesses using semantic similarity"""
     print("[Task B] Node: cold_start_search - Searching via ChromaDB vector store")
+    print(f"[Task B] User requested top_k: {state['top_k']}")
+    print(f"[Task B] Fetching {state['top_k'] * 4} candidates for LLM to rank")
+    
     results = vector_search_businesses.invoke({
         "query": state["persona_text"],
         "top_k": state["top_k"] * 4  # Get more candidates for ranking
     })
+    
+    print(f"[Task B] ChromaDB returned candidates (preview): {str(results)[:200]}...")
+    
     return {
         "candidates": results,
         "user_reviews": "",
@@ -147,20 +153,30 @@ User Preferences: {persona_context}
 CANDIDATE PLACES:
 {state['candidates']}
 
-TASK: From the candidates above, select the top {state['top_k']} best matches for this user.
+CRITICAL INSTRUCTION - USER REQUESTED EXACTLY {state['top_k']} RECOMMENDATIONS:
+The user wants to see EXACTLY {state['top_k']} recommendations. NOT MORE, NOT LESS.
+From the candidates above, select the top {state['top_k']} best matches.
 
-Respond with a JSON array of recommendations. Each recommendation should have:
+IMPORTANT - WRITE CONFIDENT RECOMMENDATIONS:
+- These are RECOMMENDATIONS, not suggestions or maybes
+- Be DIRECT and CERTAIN in your language
+- DO NOT use uncertain phrases like: "should offer", "might have", "you can check", "worth checking", "it is possible"
+- USE confident phrases like: "offers", "has", "serves", "provides", "features", "specializes in"
+- The user is asking for recommendations based on their preferences - be confident in your choices
+
+RESPONSE FORMAT:
+Return a JSON array with EXACTLY {state['top_k']} items. Each item must have:
 - "name": exact business name from candidates
-- "category": business category
-- "reason": 1-2 sentences why it fits this user
+- "category": business category  
+- "reason": 1-2 sentences explaining why this place matches their preferences (be confident and direct)
 
-Example format:
-[
-  {{"name": "Mama Put Kitchen", "category": "Nigerian Restaurant", "reason": "Perfect for someone who loves authentic local food with great jollof rice and affordable prices"}},
-  {{"name": "The Grind Cafe", "category": "Coffee Shop", "reason": "Ideal spot for a Gen Z foodie who wants Instagram-worthy vibes and good coffee"}}
-]
+GOOD EXAMPLE (confident language):
+{{"name": "Mama Put Kitchen", "category": "Nigerian Restaurant", "reason": "This restaurant serves authentic local dishes with excellent jollof rice at affordable prices, perfect for your budget and taste preferences."}}
 
-Provide exactly {state['top_k']} recommendations as a JSON array:
+BAD EXAMPLE (uncertain language):
+{{"name": "Mama Put Kitchen", "category": "Nigerian Restaurant", "reason": "This restaurant should offer local dishes and you can check if they have jollof rice at good prices."}}
+
+NOW RETURN EXACTLY {state['top_k']} RECOMMENDATIONS AS JSON WITH CONFIDENT, DIRECT LANGUAGE:
 """
 
     # Inject Nigerian context
@@ -188,6 +204,11 @@ Provide exactly {state['top_k']} recommendations as a JSON array:
             parsed = json.loads(json_str)
             
             print(f"[Task B] Parsed {len(parsed)} recommendations from JSON")
+            
+            # CRITICAL: Truncate to exactly top_k if LLM returned more
+            if len(parsed) > state['top_k']:
+                print(f"[Task B] WARNING: LLM returned {len(parsed)} items but user requested {state['top_k']}, truncating...")
+                parsed = parsed[:state['top_k']]
             
             for item in parsed:
                 name = item.get("name", "").strip()
@@ -252,10 +273,12 @@ def node_validate_recommendations(state: TaskBState) -> dict:
     Final validation to ensure quality recommendations:
     1. Remove any businesses the user already reviewed
     2. Ensure category diversity (not all from same category)
+    3. Truncate to exactly top_k items
     """
     print("[Task B] Node: validate_recommendations - Validating final recommendations")
     recommendations = state["recommendations"]
     reviewed_names = state.get("reviewed_businesses", [])
+    top_k = state.get("top_k", 5)
 
     # Step 1: Remove already-reviewed businesses
     filtered = []
@@ -284,17 +307,25 @@ def node_validate_recommendations(state: TaskBState) -> dict:
                 filtered.remove(diverse_rec)
                 filtered.insert(1, diverse_rec)
 
-    return {"recommendations": filtered}
+    # Step 3: Truncate to exactly top_k items
+    final_recommendations = filtered[:top_k]
+    
+    print(f"[Task B] Returning exactly {len(final_recommendations)} recommendations (requested: {top_k})")
+    
+    return {"recommendations": final_recommendations}
 
 # Node 6: Localize recommendations to Nigerian context using LLM
 def node_localize_nigerian(state: TaskBState) -> dict:
     """
-    Use LLM to replace American restaurant names/locations with Nigerian equivalents.
-    This makes recommendations authentic and locally relevant.
+    Use LLM to replace American business names and locations with Nigerian equivalents.
+    Keeps detailed English descriptions - NO Pidgin.
+    LLM uses its knowledge to pick appropriate Nigerian restaurants based on category.
     """
-    print("[Task B] Node: localize_nigerian - Localizing recommendations to Nigerian context")
+    print("[Task B] Node: localize_nigerian - Replacing with Nigerian businesses and locations")
 
     recommendations = state["recommendations"]
+    print(f"[Task B] Input recommendations count: {len(recommendations)}")
+    
     if not recommendations:
         return {"recommendations": []}
 
@@ -306,55 +337,52 @@ def node_localize_nigerian(state: TaskBState) -> dict:
         rec_list.append(f"{i+1}. Name: {rec['name']} | Category: {rec['category']} | Reason: {rec['reason']}")
 
     localization_prompt = f"""
-You are a Nigerian restaurant localization agent. Your job is to replace foreign/American restaurant names with REAL Nigerian restaurant equivalents.
+You are a Nigerian restaurant localization agent. Replace American/foreign restaurant names with real Nigerian restaurant equivalents.
+
+IMPORTANT RULES:
+1. Replace business names with REAL Nigerian restaurants that match the category/type
+2. Replace American locations with Nigerian areas (Lagos)
+3. Keep descriptions in CLEAR, DETAILED ENGLISH - NO Pidgin
+4. Match the restaurant type appropriately (fast food → Nigerian fast food, pizza → Nigerian pizza place, etc.)
+5. USE CONFIDENT LANGUAGE - these are recommendations, not suggestions
+
+CONFIDENT LANGUAGE RULES:
+- DO NOT use: "should offer", "might have", "you can check", "worth checking", "it is possible", "may find"
+- USE instead: "offers", "has", "serves", "provides", "features", "specializes in", "known for"
+- Be DIRECT and CERTAIN - the user asked for recommendations, so recommend with confidence
 
 HERE ARE THE RECOMMENDATIONS TO LOCALIZE:
 {chr(10).join(rec_list)}
 
-TASK: Replace each restaurant name with a REAL Nigerian restaurant that serves similar food or has similar vibes.
+NIGERIAN RESTAURANTS YOU CAN USE (examples - use your knowledge for more):
+- Fast Food/Chicken: Chicken Republic, Mr Biggs, Tantalizers, Sweet Sensation, Kilimanjaro
+- Nigerian Food: Mama Cass, Jevinik, Buka Lagos, Yakoyo, Olaiya Foods, Bukka Hut, Amala Zone
+- Upscale/Fine Dining: Yellow Chilli, Nkoyo, The Wheatbaker, Terra Kulture, Bogobiri
+- Pizza: Domino's Pizza Lekki, Pizza Republic
+- Cafes/Coffee: Cafe Neo, Cafe One, Art Cafe
+- Bars/Nightlife: The Place, Quilox, Shiro Lagos, Hard Rock Cafe Lagos, Sky Bar, Bottles
+- Grills: Barcelos, The Place
+- Hotel Restaurants: Radisson Blu Lagos, The Wheatbaker, 1004 Restaurant
+- Supermarkets: Shoprite, Grand Square, Spar, Ebeano
 
-NIGERIAN RESTAURANTS YOU CAN USE (pick the best match for each):
-- Chicken Republic (fast food, fried chicken)
-- Mr Biggs (fast food, pastries, rice)
-- Tantalizers (fast food, pies, snacks)
-- Sweet Sensation (fast food, Nigerian food)
-- Kilimanjaro (fast food, sharwarma)
-- Yellow Chilli (upscale Nigerian cuisine, Lekki)
-- Nkoyo (fine dining, Nigerian)
-- Mama Cass (Nigerian buffet, affordable)
-- Jevinik (Nigerian restaurant, pepper soup)
-- Buka Lagos (local food, amala, ewedu)
-- Yakoyo (Nigerian local food, multiple branches)
-- The Place (restaurant and bar, grills)
-- Cafe Neo (coffee shop, cafe)
-- Cafe One (upscale cafe, Ikoyi)
-- Art Cafe (cafe, pastries)
-- Quilox (nightclub, lounge, VIP)
-- Shiro Lagos (upscale bar, cocktails)
-- Hard Rock Cafe Lagos (bar, live music)
-- Sky Bar (rooftop bar, nightlife)
-- Domino's Pizza Lekki (pizza delivery)
-- Pizza Republic (pizza, casual dining)
-- Barcelos (grilled chicken, Portuguese)
-- Terra Kulture (art cafe, Nigerian food)
-- Bogobiri (boutique restaurant, art vibes)
-- The Wheatbaker (hotel restaurant, fine dining)
-- Radisson Blu Lagos (hotel restaurant)
-- Bukka Hut (modern buka, local food)
-- Amala Zone (amala, ewedu, gbegiri)
-- Olaiya Foods (local food, Surulere)
-- Chowdeck Kitchen (delivery restaurant)
-- 1004 Restaurant (Victoria Island)
-- Bottles (bar and lounge, VI)
+NIGERIAN LOCATIONS (Lagos areas):
+- Lekki, Victoria Island (VI), Ikeja, Ikoyi, Surulere, Yaba, Ajah, Festac, Maryland, Gbagada
 
-ALSO localize the category and reason:
-- Replace American cities with Nigerian areas (Lekki, VI, Ikeja, Ikoyi, Surulere, Yaba, Abuja)
-- Replace dollar references with Naira
-- Keep the reason warm and Nigerian-friendly
+TASK: For each recommendation:
+1. Replace the business name with an appropriate Nigerian restaurant
+2. Replace American locations with Lagos areas
+3. Keep the reason detailed and in clear English with CONFIDENT language
+4. Replace $ with ₦
 
-Respond with a JSON array in this EXACT format:
+GOOD EXAMPLE (confident):
+"Shoprite Ikeja | Grocery | This supermarket offers a wide selection of affordable groceries and household essentials at competitive prices, perfect for budget-conscious shoppers in Ikeja."
+
+BAD EXAMPLE (uncertain):
+"Shoprite Ikeja | Grocery | This supermarket should offer groceries and you can check if they have affordable items."
+
+Respond with a JSON array with Nigerian business names, locations, and CONFIDENT descriptions:
 [
-  {{"name": "Nigerian Restaurant Name", "category": "Nigerian Category", "reason": "Nigerian-localized reason"}},
+  {{"name": "Nigerian Restaurant Name", "category": "category", "reason": "Confident, detailed English reason"}},
   ...
 ]
 
@@ -374,11 +402,16 @@ Return exactly {len(recommendations)} items:
 
             localized = []
             for i, item in enumerate(parsed):
+                # Only take up to the number of original recommendations
+                if i >= len(recommendations):
+                    break
+                
+                # Use LLM's Nigerian business name and localized reason
                 localized.append({
-                    "name": item.get("name", recommendations[i]["name"] if i < len(recommendations) else ""),
-                    "category": item.get("category", recommendations[i]["category"] if i < len(recommendations) else ""),
-                    "reason": item.get("reason", recommendations[i]["reason"] if i < len(recommendations) else ""),
-                    "image_url": ""
+                    "name": item.get("name", recommendations[i]["name"]),  # Nigerian business name
+                    "category": item.get("category", recommendations[i]["category"]),
+                    "reason": item.get("reason", recommendations[i]["reason"]),  # Localized reason in English
+                    "image_url": ""  # No image for replaced businesses
                 })
 
             print(f"[Task B] Successfully localized {len(localized)} recommendations")
@@ -404,7 +437,7 @@ def build_task_b_graph():
     graph.add_node("get_candidates",           node_get_candidates)
     graph.add_node("rank_recommend",           node_rank_recommend)
     graph.add_node("validate_recommendations", node_validate_recommendations)
-    graph.add_node("localize_nigerian",        node_localize_nigerian)
+    graph.add_node("localize_nigerian",        node_localize_nigerian)  # Rewrites reasons in Nigerian Pidgin
 
     # Start with mode detection
     graph.add_edge(START, "detect_mode")
@@ -423,7 +456,7 @@ def build_task_b_graph():
     # Cold start path: search → rank → validate → localize
     graph.add_edge("cold_start_search",        "rank_recommend")
 
-    # Both paths converge at validation → localization before END
+    # Both paths converge at validation, then localization, then END
     graph.add_edge("rank_recommend",           "validate_recommendations")
     graph.add_edge("validate_recommendations", "localize_nigerian")
     graph.add_edge("localize_nigerian",        END)

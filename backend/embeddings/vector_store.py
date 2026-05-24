@@ -40,7 +40,7 @@ def build_index():
     print("🔨 Building ChromaDB collection from business data...")
 
     # Fetch businesses from database
-    businesses = get_all_businesses(limit=20000)  # All businesses we loaded
+    businesses = get_all_businesses(limit=5000)  # All businesses we loaded
     print(f"   Loaded {len(businesses)} businesses from database")
 
     # Initialize ChromaDB
@@ -111,7 +111,7 @@ def build_index():
     print(f"   📦 Adding documents to ChromaDB in batches of 200...")
 
     # Generate embeddings and add to ChromaDB in batches
-    batch_size = 200
+    batch_size = 50  # Reduced to avoid timeouts with custom embedding server
     total_batches = (len(documents) + batch_size - 1) // batch_size
     
     import time
