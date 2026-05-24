@@ -36,6 +36,8 @@ data/faiss_index/*.pkl
 *.pdf
 BCT_Hackathon_Build_Spec*.md
 ARCHITECTURE_IMPROVEMENTS.md
+Task_A_Solution_Paper.md
+Task_B_Solution_Paper.md
 
 # Large JSON datasets
 amazon_samples-1/*.json
